@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.AnyOf.anyOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import io.scalecube.transport.Address;
 
@@ -12,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import rx.Observable;
+import rx.Subscription;
 import rx.observables.BlockingObservable;
 
 import java.util.Iterator;
@@ -55,16 +57,26 @@ public class SubscriberStreamTest {
   }
 
   @Test
+  public void testSubscribeStreamUnsubscribeBehavior() throws Exception {
+    Address dummyAddress = Address.from("localhost:7070");
+    ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
+    Observable<ServiceMessage> observable = subscriberStream.listenOnNext(dummyAddress, message);
+    Subscription subscription = observable.subscribe();
+    subscription.unsubscribe();
+    assertTrue(subscription.isUnsubscribed());
+  }
+
+  @Test
   public void testSingleRequestResponse() throws Exception {
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
-    Observable<ServiceMessage> observable = subscriberStream.subscribeOnNext(echoAddress, message);
+    Observable<ServiceMessage> observable = subscriberStream.listenOnNext(echoAddress, message);
     assertEquals(message, observable.toBlocking().first());
   }
 
   @Test
   public void testSingleRequestSeveralResponses() throws Exception {
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
-    Observable<ServiceMessage> observable = subscriberStream.subscribeOnNext(manyEchoAddress, message);
+    Observable<ServiceMessage> observable = subscriberStream.listenOnNext(manyEchoAddress, message);
     Iterator<ServiceMessage> iterator = observable.toBlocking().getIterator();
     assertThat(iterator.next(), is(message));
     assertThat(iterator.next(), is(message));
@@ -76,9 +88,9 @@ public class SubscriberStreamTest {
     ServiceMessage message1 = ServiceMessage.withQualifier("1").build();
     ServiceMessage message2 = ServiceMessage.withQualifier("2").build();
     ServiceMessage message3 = ServiceMessage.withQualifier("3").build();
-    Observable<ServiceMessage> observable1 = subscriberStream.subscribeOnNext(echoAddress, message1);
-    Observable<ServiceMessage> observable2 = subscriberStream.subscribeOnNext(echoAddress, message2);
-    Observable<ServiceMessage> observable3 = subscriberStream.subscribeOnNext(echoAddress, message3);
+    Observable<ServiceMessage> observable1 = subscriberStream.listenOnNext(echoAddress, message1);
+    Observable<ServiceMessage> observable2 = subscriberStream.listenOnNext(echoAddress, message2);
+    Observable<ServiceMessage> observable3 = subscriberStream.listenOnNext(echoAddress, message3);
     BlockingObservable<ServiceMessage> observable =
         Observable.merge(observable1, observable2, observable3).toBlocking();
     Iterator<ServiceMessage> iterator = observable.getIterator();

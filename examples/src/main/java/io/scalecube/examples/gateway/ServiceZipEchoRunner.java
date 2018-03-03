@@ -28,11 +28,11 @@ public class ServiceZipEchoRunner {
     serverStream.listenMessageReadSuccess().subscribe(message -> {
 
       Observable<ServiceMessage> listen1 =
-          subscriberStream.subscribeOnNext(ADDRESS1, copyFrom(message).qualifier("aaa").build());
+          subscriberStream.listenOnNext(ADDRESS1, copyFrom(message).qualifier("aaa").build());
       Observable<ServiceMessage> listen2 =
-          subscriberStream.subscribeOnNext(ADDRESS2, copyFrom(message).qualifier("bbb").build());
+          subscriberStream.listenOnNext(ADDRESS2, copyFrom(message).qualifier("bbb").build());
       Observable<ServiceMessage> listen3 =
-          subscriberStream.subscribeOnNext(ADDRESS3, copyFrom(message).qualifier("ccc").build());
+          subscriberStream.listenOnNext(ADDRESS3, copyFrom(message).qualifier("ccc").build());
 
       Observable.zip(listen1, listen2, listen3,
           (message1, message2, message3) -> {

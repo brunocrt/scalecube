@@ -79,24 +79,31 @@ public final class SubscriberStream {
    * @param message to send, a request.
    * @return subscription point for receiving response messages from remote party.
    */
-  public Observable<ServiceMessage> subscribeOnNext(Address address, ServiceMessage message) {
-    return Observable.create(emitter -> {
-      try {
-        ChannelContext channelContext = ChannelContext.create(address);
-        serverStream.subscribe(channelContext);
-        // subscribe
-        channelContext.listenMessageReadSuccess().subscribe(emitter);
-        // emit request
-        channelContext.postMessageWrite(message);
-      } catch (Exception throwable) {
-        emitter.onError(throwable);
-      }
-    }, Emitter.BackpressureMode.BUFFER);
+  public Observable<ServiceMessage> listenOnNext(Address address, ServiceMessage message) {
+    // create 'subscriber'
+    ChannelContext channelContext;
+    try {
+      serverStream.subscribe(channelContext = ChannelContext.create(address));
+    } catch (Exception throwable) {
+      return Observable.error(throwable);
+    }
+    // subscribe and emit request
+    return Observable.<ServiceMessage>create(
+        emitter -> {
+          try {
+            channelContext.listenMessageReadSuccess().subscribe(emitter);
+            channelContext.postMessageWrite(message);
+          } catch (Exception throwable) {
+            emitter.onError(throwable);
+          }
+        }, Emitter.BackpressureMode.BUFFER)
+        .doOnUnsubscribe(channelContext::close)
+        .share();
   }
 
   /**
    * Closes shared (across {@link SubscriberStream} instances) serverStream and clientStream. After this call this
-   * instance wouldn't emit events on subsequent {@link #subscribeOnNext(Address, ServiceMessage)}.
+   * instance wouldn't emit events on subsequent {@link #listenOnNext(Address, ServiceMessage)}.
    */
   public void close() {
     serverStream.close();
