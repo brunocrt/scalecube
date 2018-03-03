@@ -5,6 +5,7 @@ import static org.hamcrest.core.AnyOf.anyOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import io.scalecube.transport.Address;
 
@@ -18,6 +19,8 @@ import rx.observables.BlockingObservable;
 
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriberStreamTest {
 
@@ -57,13 +60,44 @@ public class SubscriberStreamTest {
   }
 
   @Test
-  public void testSubscribeStreamUnsubscribeBehavior() throws Exception {
+  public void testUnsubscribeBehavior() throws Exception {
     Address dummyAddress = Address.from("localhost:7070");
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
     Observable<ServiceMessage> observable = subscriberStream.listenOnNext(dummyAddress, message);
     Subscription subscription = observable.subscribe();
     subscription.unsubscribe();
     assertTrue(subscription.isUnsubscribed());
+  }
+
+  @Test
+  public void testReoccuringOperation() throws Exception {
+    AtomicInteger i = new AtomicInteger();
+    int n = 2;
+    ServiceMessage message = ServiceMessage.withQualifier("q/repeat").build();
+    Observable<ServiceMessage> observable =
+        subscriberStream
+            .listenOnNext(echoAddress, message)
+            .doOnNext(message1 -> {
+              if (i.incrementAndGet() < n)
+                throw new RuntimeException("hola");
+            })
+            .retry(n);
+    assertEquals(message, observable.toBlocking().first());
+  }
+
+  @Test
+  public void testListenOnNextWithTimeout() throws Exception {
+    Address dummyAddress = Address.from("localhost:7070");
+    ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
+    Observable<ServiceMessage> observable = subscriberStream
+        .listenOnNext(dummyAddress, message)
+        .timeout(1, TimeUnit.SECONDS);
+    try {
+      assertEquals(message, observable.toBlocking().first());
+      fail("Expected TimeoutException");
+    } catch (Exception e) {
+      assertEquals(TimeoutException.class, e.getCause().getClass());
+    }
   }
 
   @Test

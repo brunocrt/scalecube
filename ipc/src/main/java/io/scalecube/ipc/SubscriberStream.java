@@ -80,25 +80,20 @@ public final class SubscriberStream {
    * @return subscription point for receiving response messages from remote party.
    */
   public Observable<ServiceMessage> listenOnNext(Address address, ServiceMessage message) {
-    // create 'subscriber'
-    ChannelContext channelContext;
-    try {
-      serverStream.subscribe(channelContext = ChannelContext.create(address));
-    } catch (Exception throwable) {
-      return Observable.error(throwable);
-    }
-    // subscribe and emit request
-    return Observable.<ServiceMessage>create(
-        emitter -> {
-          try {
-            channelContext.listenMessageReadSuccess().subscribe(emitter);
-            channelContext.postMessageWrite(message);
-          } catch (Exception throwable) {
-            emitter.onError(throwable);
-          }
-        }, Emitter.BackpressureMode.BUFFER)
-        .doOnUnsubscribe(channelContext::close)
-        .share();
+    return Observable.create(emitter -> {
+      ChannelContext channelContext;
+      try {
+        // create 'subscriber'
+        serverStream.subscribe(channelContext = ChannelContext.create(address));
+        // register cleanup process upfront
+        emitter.setCancellation(channelContext::close);
+        // subscribe and emit request (in this order)
+        channelContext.listenMessageReadSuccess().subscribe(emitter);
+        channelContext.postMessageWrite(message);
+      } catch (Exception throwable) {
+        emitter.onError(throwable);
+      }
+    }, Emitter.BackpressureMode.BUFFER);
   }
 
   /**
