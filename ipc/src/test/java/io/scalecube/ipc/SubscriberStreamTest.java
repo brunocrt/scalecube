@@ -17,18 +17,18 @@ import rx.observables.BlockingObservable;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
-public class ExchangeStreamTest {
+public class SubscriberStreamTest {
 
   private Address echoAddress;
   private Address manyEchoAddress;
   private ListeningServerStream echoServerStream;
   private ListeningServerStream manyEchoServerStream;
-  private ExchangeStream exchangeStream;
+  private SubscriberStream subscriberStream;
 
   @Before
   public void setUp() throws Exception {
     ListeningServerStream serverStream = ListeningServerStream.newServerStream().withListenAddress("localhost");
-    exchangeStream = ExchangeStream.newExchangeStream();
+    subscriberStream = SubscriberStream.newSubscriberStream();
 
     // echo service infra
     echoServerStream = serverStream.bind();
@@ -47,7 +47,7 @@ public class ExchangeStreamTest {
 
   @After
   public void cleanUp() throws Exception {
-    exchangeStream.close();
+    subscriberStream.close();
     echoServerStream.close();
     manyEchoServerStream.close();
     echoAddress = echoServerStream.listenUnbind().toBlocking().toFuture().get(3, TimeUnit.SECONDS);
@@ -57,14 +57,14 @@ public class ExchangeStreamTest {
   @Test
   public void testSingleRequestResponse() throws Exception {
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
-    Observable<ServiceMessage> observable = exchangeStream.send(echoAddress, message);
+    Observable<ServiceMessage> observable = subscriberStream.subscribeOnNext(echoAddress, message);
     assertEquals(message, observable.toBlocking().first());
   }
 
   @Test
   public void testSingleRequestSeveralResponses() throws Exception {
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
-    Observable<ServiceMessage> observable = exchangeStream.send(manyEchoAddress, message);
+    Observable<ServiceMessage> observable = subscriberStream.subscribeOnNext(manyEchoAddress, message);
     Iterator<ServiceMessage> iterator = observable.toBlocking().getIterator();
     assertThat(iterator.next(), is(message));
     assertThat(iterator.next(), is(message));
@@ -76,9 +76,9 @@ public class ExchangeStreamTest {
     ServiceMessage message1 = ServiceMessage.withQualifier("1").build();
     ServiceMessage message2 = ServiceMessage.withQualifier("2").build();
     ServiceMessage message3 = ServiceMessage.withQualifier("3").build();
-    Observable<ServiceMessage> observable1 = exchangeStream.send(echoAddress, message1);
-    Observable<ServiceMessage> observable2 = exchangeStream.send(echoAddress, message2);
-    Observable<ServiceMessage> observable3 = exchangeStream.send(echoAddress, message3);
+    Observable<ServiceMessage> observable1 = subscriberStream.subscribeOnNext(echoAddress, message1);
+    Observable<ServiceMessage> observable2 = subscriberStream.subscribeOnNext(echoAddress, message2);
+    Observable<ServiceMessage> observable3 = subscriberStream.subscribeOnNext(echoAddress, message3);
     BlockingObservable<ServiceMessage> observable =
         Observable.merge(observable1, observable2, observable3).toBlocking();
     Iterator<ServiceMessage> iterator = observable.getIterator();

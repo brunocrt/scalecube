@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 import rx.Emitter;
 import rx.Observable;
 
-public final class ExchangeStream {
+public final class SubscriberStream {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ExchangeStream.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriberStream.class);
 
   private static final Bootstrap DEFAULT_BOOTSTRAP;
   // Pre-configure default bootstrap
@@ -33,26 +33,26 @@ public final class ExchangeStream {
 
   //// Constructors
 
-  private ExchangeStream(ExchangeStream other) {
+  private SubscriberStream(SubscriberStream other) {
     this(other.serverStream, other.clientStream);
   }
 
-  private ExchangeStream(ServerStream serverStream, ClientStream clientStream) {
+  private SubscriberStream(ServerStream serverStream, ClientStream clientStream) {
     this.serverStream = serverStream;
     this.clientStream = clientStream;
   }
 
   /**
-   * Creates new ExchangeStream with default bootstrap.
+   * Factory method. Creates new SubscriberStream with default bootstrap.
    */
-  public static ExchangeStream newExchangeStream() {
-    return newExchangeStream(DEFAULT_BOOTSTRAP);
+  public static SubscriberStream newSubscriberStream() {
+    return newSubscriberStream(DEFAULT_BOOTSTRAP);
   }
 
   /**
-   * Creates new ExchangeStream with custom {@link Bootstrap}.
+   * Factory method. Creates new SubscriberStream with custom {@link Bootstrap}.
    */
-  public static ExchangeStream newExchangeStream(Bootstrap bootstrap) {
+  public static SubscriberStream newSubscriberStream(Bootstrap bootstrap) {
     ServerStream serverStream = ServerStream.newServerStream();
     ClientStream clientStream = ClientStream.newClientStream(bootstrap);
 
@@ -67,31 +67,36 @@ public final class ExchangeStream {
             (identity, message1) -> ChannelContext.getIfExist(identity).postReadSuccess(message1),
             throwable -> LOGGER.warn("Failed to handle message: {}, cause: {}", message, throwable)));
 
-    return new ExchangeStream(serverStream, clientStream);
+    return new SubscriberStream(serverStream, clientStream);
   }
 
   /**
-   * Sends a message to a given address. Internally creates new instance of channelContext (a new 'exchange point')
-   * attached to serverStream<->clientStream communication, and returns subscription point back to caller.
+   * Sends a message to a given address and listens response traffic on returned subscription point. Internally creates
+   * new instance of channelContext (a new 'subscriber') attached to serverStream<->clientStream communication, and
+   * returns subscription point back to caller.
    *
    * @param address of target endpoint.
-   * @param message to send.
-   * @return subscription point for receiving messages from remote party.
+   * @param message to send, a request.
+   * @return subscription point for receiving response messages from remote party.
    */
-  public Observable<ServiceMessage> send(Address address, ServiceMessage message) {
-    ChannelContext channelContext = ChannelContext.create(address);
+  public Observable<ServiceMessage> subscribeOnNext(Address address, ServiceMessage message) {
     return Observable.create(emitter -> {
-      serverStream.subscribe(channelContext);
-      // subscribe
-      channelContext.listenMessageReadSuccess().subscribe(emitter);
-      // emit request
-      channelContext.postMessageWrite(message);
+      try {
+        ChannelContext channelContext = ChannelContext.create(address);
+        serverStream.subscribe(channelContext);
+        // subscribe
+        channelContext.listenMessageReadSuccess().subscribe(emitter);
+        // emit request
+        channelContext.postMessageWrite(message);
+      } catch (Exception throwable) {
+        emitter.onError(throwable);
+      }
     }, Emitter.BackpressureMode.BUFFER);
   }
 
   /**
-   * Closes shared (across {@link ExchangeStream} instances) serverStream and clientStream. After this call this
-   * instance wouldn't emit events on subsequent {@link #send(Address, ServiceMessage)}.
+   * Closes shared (across {@link SubscriberStream} instances) serverStream and clientStream. After this call this
+   * instance wouldn't emit events on subsequent {@link #subscribeOnNext(Address, ServiceMessage)}.
    */
   public void close() {
     serverStream.close();
