@@ -27,15 +27,21 @@ public final class NettyServerTransport {
   private final ListeningServerStream.Config config;
   private final ServerBootstrap serverBootstrap;
 
-  private final ConcurrentMap<Address, ChannelContext> inboundChannels;
+  private final ConcurrentMap<Address, ChannelContext> inboundChannels = new ConcurrentHashMap<>();
 
   private Address serverAddress; // calculated
   private ServerChannel serverChannel; // calculated
 
+  /**
+   * Public constructor for this transport. {@link ListeningServerStream} call this constructor passing his config
+   * object and channelContext logic handler as second argument.
+   * 
+   * @param config from {@link ListeningServerStream} object.
+   * @param channelContextConsumer logic provider around connected {@link ChannelContext}.
+   */
   public NettyServerTransport(ListeningServerStream.Config config, Consumer<ChannelContext> channelContextConsumer) {
     this.config = config;
 
-    inboundChannels = new ConcurrentHashMap<>();
     Consumer<ChannelContext> consumer = channelContextConsumer.andThen(channelContext -> {
       // register cleanup process upfront
       channelContext.listenClose(input -> inboundChannels.remove(input.getAddress(), input));
