@@ -93,7 +93,7 @@ public final class GatewaySocketIoServer {
     SocketIOServer server = SocketIOServer.newInstance(configuration);
     server.setListener(new GatewaySocketIoListener(config.serverStream));
     if (config.serverBootstrap != null) {
-      server.setServerBootstrapFactory(() -> config.serverBootstrap);
+      server.setServerBootstrapFactory(() -> config.serverBootstrap.clone());
     }
     server.start();
 
