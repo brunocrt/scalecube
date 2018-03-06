@@ -7,7 +7,20 @@ import java.util.Optional;
 public final class Event {
 
   enum Topic {
-    ReadSuccess, ReadError, MessageWrite, WriteSuccess, WriteError, ChannelContextInactive
+    //
+    ReadSuccess,
+    //
+    ReadError,
+    //
+    MessageWrite,
+    //
+    WriteSuccess,
+    //
+    WriteError,
+    //
+    ChannelContextClosed,
+    //
+    ChannelContextUnsubscribed
   }
 
   private final Topic topic; // not null
@@ -80,8 +93,12 @@ public final class Event {
     return topic == Topic.WriteError;
   }
 
-  public boolean isChannelContextInactive() {
-    return topic == Topic.ChannelContextInactive;
+  public boolean isChannelContextClosed() {
+    return topic == Topic.ChannelContextClosed;
+  }
+
+  public boolean isChannelContextUnsubscribed() {
+    return topic == Topic.ChannelContextUnsubscribed;
   }
 
   //// Builder

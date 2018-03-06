@@ -8,6 +8,10 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import rx.Observable;
+import rx.subjects.PublishSubject;
+import rx.subjects.Subject;
+
 import java.util.concurrent.CompletableFuture;
 
 public final class ClientStream extends DefaultEventStream {
@@ -23,12 +27,18 @@ public final class ClientStream extends DefaultEventStream {
         .option(ChannelOption.SO_REUSEADDR, true);
   }
 
+  // listens to address not connected
+  private final Subject<Address, Address> connectFailedSubject = PublishSubject.<Address>create().toSerialized();
+
   private NettyClientTransport clientTransport; // calculated
 
   private ClientStream(Bootstrap bootstrap) {
     clientTransport = new NettyClientTransport(bootstrap, this::subscribe);
     // register cleanup process upfront
-    listenClose(aVoid -> clientTransport.close());
+    listenClose(aVoid -> {
+      clientTransport.close();
+      connectFailedSubject.onCompleted();
+    });
   }
 
   public static ClientStream newClientStream() {
@@ -51,6 +61,18 @@ public final class ClientStream extends DefaultEventStream {
       if (channelContext != null) {
         channelContext.postMessageWrite(message);
       }
+      if (throwable != null) {
+        connectFailedSubject.onNext(address);
+      }
     });
+  }
+
+  /**
+   * Subscription point for listening on failed connection attempts. When connection failed on {@link Address} no
+   * {@link ChannelContext} would be created, there by concerned party can't use {@link #listen()} to catch up on failed
+   * connection attempts => this method exists.
+   */
+  public Observable<Address> listenConnectFailed() {
+    return connectFailedSubject.onBackpressureBuffer().asObservable();
   }
 }
