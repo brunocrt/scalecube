@@ -20,18 +20,14 @@ public final class StreamProcessor {
     // create 'subscriber'
     serverStream.subscribe(channelContext = ChannelContext.create(address));
 
-    // listen for upstream 'unsubscribe'
-    serverStream.listenChannelContextUnsubscribed().subscribe(event -> {
-      // Todo ...
-    });
-
-    // prepare response stream and account for downstream 'unsubscribe'
+    // prepare response stream and account for upstream and downstream 'unsubscribe'
     responseStream = Observable.<ServiceMessage>create(
-        emitter -> channelContext.listenMessageReadSuccess().flatMap(this::toResponse).subscribe(emitter),
+        emitter -> {
+          channelContext.listenMessageReadSuccess().flatMap(this::toResponse).subscribe(emitter);
+          serverStream.listenChannelContextUnsubscribed().subscribe(event -> emitter.onCompleted());
+        },
         Emitter.BackpressureMode.BUFFER)
-        .doOnUnsubscribe(() -> {
-          // Todo ...
-        })
+        .doOnUnsubscribe(this::onCompleted)
         .share();
   }
 
@@ -52,10 +48,10 @@ public final class StreamProcessor {
   }
 
   private Observable<? extends ServiceMessage> toResponse(ServiceMessage message) {
-    if (Qualifier.Q_GENERAL_FAILURE.equalsIgnoreCase(message.getQualifier())) { // remote => onError
+    if (Qualifier.Q_GENERAL_FAILURE.isEqualsIgnoreCase(message.getQualifier())) { // remote => onError
       return Observable.error(new RuntimeException(String.valueOf(500)));
     }
-    if (Qualifier.Q_ON_COMPLETED.equalsIgnoreCase(message.getQualifier())) { // remote => onCompleted
+    if (Qualifier.Q_ON_COMPLETED.isEqualsIgnoreCase(message.getQualifier())) { // remote => onCompleted
       return Observable.empty();
     }
     return Observable.just(message); // remote => normal response

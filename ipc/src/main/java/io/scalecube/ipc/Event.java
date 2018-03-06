@@ -24,13 +24,15 @@ public final class Event {
   }
 
   private final Topic topic; // not null
-  private final ChannelContext channelContext; // not null
+  private final Address address; // not null
+  private final String identity; // not null
   private final Optional<ServiceMessage> message; // nullable
   private final Optional<Throwable> error; // nullable
 
   private Event(Builder builder) {
     this.topic = builder.topic;
-    this.channelContext = builder.channelContext;
+    this.address = builder.address;
+    this.identity = builder.identity;
     this.message = Optional.ofNullable(builder.message);
     this.error = Optional.ofNullable(builder.error);
   }
@@ -54,11 +56,11 @@ public final class Event {
   }
 
   public Address getAddress() {
-    return channelContext.getAddress();
+    return address;
   }
 
   public String getIdentity() {
-    return channelContext.getId();
+    return identity;
   }
 
   public Optional<Throwable> getError() {
@@ -106,18 +108,19 @@ public final class Event {
   public static class Builder {
 
     private final Topic topic; // not null
-    private final ChannelContext channelContext; // not null
+    private final Address address; // not null
+    private final String identity; // not null
     private ServiceMessage message; // nullable
     private Throwable error; // nullable
 
-    public Builder(Topic topic, ChannelContext channelContext) {
+    public Builder(Topic topic, Address address, String identity) {
       this.topic = topic;
-      this.channelContext = channelContext;
+      this.address = address;
+      this.identity = identity;
     }
 
     public Builder(Event other) {
-      this.topic = other.topic;
-      this.channelContext = other.channelContext;
+      this(other.topic, other.address, other.identity);
       this.message = other.message.orElse(null);
       this.error = other.error.orElse(null);
     }

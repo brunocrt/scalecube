@@ -50,7 +50,7 @@ public class DefaultEventStream implements EventStream {
     // full scan and filter then unsubscribe
     subscriptions.keySet().forEach(channelContext -> {
       if (address.equals(channelContext.getAddress())) {
-        unsubscribe(channelContext);
+        cleanupSubscription(channelContext);
       }
     });
   }
@@ -62,10 +62,11 @@ public class DefaultEventStream implements EventStream {
 
   @Override
   public final void close() {
+    // full scan and unsubscribe
+    subscriptions.keySet().forEach(this::cleanupSubscription);
+    // complete observers
     subject.onCompleted();
     closeSubject.onCompleted();
-    // full scan and unsubscribe
-    subscriptions.keySet().forEach(this::unsubscribe);
   }
 
   @Override
@@ -78,16 +79,16 @@ public class DefaultEventStream implements EventStream {
     subject.onNext(event);
   }
 
-  private void onChannelContextClosed(ChannelContext channelContext) {
-    unsubscribe(channelContext);
-    subject.onNext(new Event.Builder(Topic.ChannelContextClosed, channelContext).build());
+  private void onChannelContextClosed(ChannelContext ctx) {
+    cleanupSubscription(ctx);
+    subject.onNext(new Event.Builder(Topic.ChannelContextClosed, ctx.getAddress(), ctx.getId()).build());
   }
 
-  private void onChannelContextUnsubscribed(ChannelContext channelContext) {
-    subject.onNext(new Event.Builder(Topic.ChannelContextUnsubscribed, channelContext).build());
+  private void onChannelContextUnsubscribed(ChannelContext ctx) {
+    subject.onNext(new Event.Builder(Topic.ChannelContextUnsubscribed, ctx.getAddress(), ctx.getId()).build());
   }
 
-  private void unsubscribe(ChannelContext channelContext) {
+  private void cleanupSubscription(ChannelContext channelContext) {
     Subscription subscription = subscriptions.remove(channelContext);
     if (subscription != null) {
       subscription.unsubscribe();

@@ -30,10 +30,6 @@ public interface EventStream {
     return listen().filter(Event::isReadSuccess).map(Event::getMessageOrThrow);
   }
 
-  default Observable<ServiceMessage> listenMessageWriteError() {
-    return listen().filter(Event::isWriteError).map(Event::getMessageOrThrow);
-  }
-
   default Observable<ServiceMessage> listenMessageWriteSuccess() {
     return listen().filter(Event::isWriteSuccess).map(Event::getMessageOrThrow);
   }

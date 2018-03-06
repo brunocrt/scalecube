@@ -43,11 +43,11 @@ public final class Qualifier {
     return stringValue;
   }
 
-  public boolean equals(String qualifier) {
+  public boolean isEquals(String qualifier) {
     return stringValue.equals(qualifier);
   }
 
-  public boolean equalsIgnoreCase(String qualifier) {
+  public boolean isEqualsIgnoreCase(String qualifier) {
     return stringValue.equalsIgnoreCase(qualifier);
   }
 

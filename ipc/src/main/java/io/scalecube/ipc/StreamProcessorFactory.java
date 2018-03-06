@@ -58,8 +58,10 @@ public final class StreamProcessorFactory {
             (identity, message1) -> ChannelContext.getIfExist(identity).postReadSuccess(message1),
             throwable -> LOGGER.warn("Failed to handle message: {}, cause: {}", message, throwable)));
 
-    // connect failed to remote party => do cleanup
-    clientStream.listenConnectFailed().subscribe(serverStream::unsubscribe);
+    // send failed to remote party => do cleanup
+    clientStream.listen().filter(Event::isWriteError).subscribe(event -> {
+      // serverStream::unsubscribe
+    });
 
     // remote party gone => do cleanup
     clientStream.listenChannelContextClosed().map(Event::getAddress).subscribe(serverStream::unsubscribe);

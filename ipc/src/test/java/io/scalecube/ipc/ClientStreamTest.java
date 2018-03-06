@@ -87,15 +87,17 @@ public class ClientStreamTest {
   }
 
   @Test
-  public void testClientStreamConnectFailed() throws Exception {
-    BehaviorSubject<Address> connectFailedSubject = BehaviorSubject.create();
-    clientStream.listenConnectFailed().subscribe(connectFailedSubject);
+  public void testClientStreamSendAttemptFailed() throws Exception {
+    BehaviorSubject<Event> sendFailedSubject = BehaviorSubject.create();
+    clientStream.listen().filter(Event::isWriteError).subscribe(sendFailedSubject);
 
-    Address failedAddress = Address.from("localhost:0");
-    clientStream.send(failedAddress, ServiceMessage.withQualifier("q/hello").build());
+    Address address = Address.from("host:1234");
+    ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
+    clientStream.send(address, message);
 
-    Address actualFailedAddress = connectFailedSubject.timeout(3, TimeUnit.SECONDS).toBlocking().getIterator().next();
-    assertEquals(failedAddress, actualFailedAddress);
+    Event event = sendFailedSubject.timeout(3, TimeUnit.SECONDS).toBlocking().getIterator().next();
+    assertEquals(address, event.getAddress());
+    assertEquals(message, event.getMessageOrThrow());
   }
 
   @Test
