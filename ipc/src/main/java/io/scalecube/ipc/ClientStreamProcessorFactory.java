@@ -68,10 +68,10 @@ public final class ClientStreamProcessorFactory {
    * @return new {@link ClientStreamProcessor} object with reference to this serverStream and given address.
    */
   public ClientStreamProcessor newClientStreamProcessor(Address address) {
-    ChannelContext requestContext = ChannelContext.create(address);
-    ChannelContext responseContext = ChannelContext.create(address);
-    serverStream.subscribe(responseContext);
-    return new ClientStreamProcessor(requestContext, responseContext);
+    ChannelContext localContext = ChannelContext.create(address);
+    ChannelContext remoteContext = ChannelContext.create(address);
+    serverStream.subscribe(remoteContext);
+    return new ClientStreamProcessor(localContext, remoteContext);
   }
 
   /**

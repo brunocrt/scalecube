@@ -2,6 +2,7 @@ package io.scalecube.ipc;
 
 import rx.Emitter;
 import rx.Observable;
+import rx.Subscription;
 import rx.subscriptions.CompositeSubscription;
 
 public final class ClientStreamProcessor implements StreamProcessor {
@@ -12,29 +13,31 @@ public final class ClientStreamProcessor implements StreamProcessor {
   private static final ServiceMessage onCompletedMessage =
       ServiceMessage.withQualifier(Qualifier.Q_ON_COMPLETED).build();
 
-  private final ChannelContext requestContext;
-  private final ChannelContext responseContext;
+  private final ChannelContext localContext;
+  private final ChannelContext remoteContext;
+  private final Subscription subscription;
 
-  public ClientStreamProcessor(ChannelContext requestContext, ChannelContext responseContext) {
-    this.requestContext = requestContext;
-    this.responseContext = responseContext;
+  public ClientStreamProcessor(ChannelContext localContext, ChannelContext remoteContext) {
+    this.localContext = localContext;
+    this.remoteContext = remoteContext;
+    this.subscription = localContext.listenMessageWrite().subscribe(remoteContext::postWrite);
   }
 
   @Override
   public void onNext(ServiceMessage message) {
-    requestContext.postWrite(message);
+    localContext.postWrite(message);
   }
 
   @Override
   public void onError(Throwable throwable) {
     onNext(onErrorMessage);
-    requestContext.close();
+    localContext.close();
   }
 
   @Override
   public void onCompleted() {
     onNext(onCompletedMessage);
-    requestContext.close();
+    localContext.close();
   }
 
   @Override
@@ -44,11 +47,11 @@ public final class ClientStreamProcessor implements StreamProcessor {
       CompositeSubscription subscriptions = new CompositeSubscription();
       emitter.setCancellation(subscriptions::clear);
 
-      subscriptions.add(responseContext.listenMessageReadSuccess()
+      subscriptions.add(remoteContext.listenMessageReadSuccess()
           .flatMap(this::toResponse)
           .subscribe(emitter));
 
-      subscriptions.add(responseContext.listenWriteError()
+      subscriptions.add(remoteContext.listenWriteError()
           .map(Event::getErrorOrThrow)
           .subscribe(emitter::onError));
 
@@ -57,8 +60,9 @@ public final class ClientStreamProcessor implements StreamProcessor {
 
   @Override
   public void close() {
-    requestContext.close();
-    responseContext.close();
+    localContext.close();
+    remoteContext.close();
+    subscription.unsubscribe();
   }
 
   private Observable<? extends ServiceMessage> toResponse(ServiceMessage message) {
