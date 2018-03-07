@@ -1,6 +1,6 @@
 package io.scalecube.gateway.http;
 
-import static io.scalecube.ipc.Qualifier.ERROR_NAMESPACE;
+import static io.scalecube.ipc.Qualifier.Q_ERROR_NAMESPACE;
 
 import io.scalecube.ipc.ChannelContext;
 import io.scalecube.ipc.ErrorData;
@@ -38,7 +38,7 @@ public final class GatewayHttpMessageHandler extends ChannelDuplexHandler {
           Qualifier qualifier = Qualifier.fromString(message.getQualifier());
           FullHttpResponse response;
 
-          if (!ERROR_NAMESPACE.equalsIgnoreCase(qualifier.getNamespace())) {
+          if (!Q_ERROR_NAMESPACE.equalsIgnoreCase(qualifier.getNamespace())) {
             response = message.hasData()
                 ? HttpCodecUtil.okResponse((ByteBuf) message.getData())
                 : HttpCodecUtil.emptyResponse();
@@ -56,7 +56,7 @@ public final class GatewayHttpMessageHandler extends ChannelDuplexHandler {
           ctx.writeAndFlush(response).addListener(
               (ChannelFutureListener) future -> {
                 if (!future.isSuccess()) {
-                  channelContext.postWriteError(future.cause(), message);
+                  channelContext.postWriteError(message, future.cause());
                 } else {
                   channelContext.postWriteSuccess(message);
                 }

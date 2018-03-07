@@ -48,7 +48,7 @@ public class ClientStreamTest {
 
     List<Event> events = emittedEventsSubject.buffer(2).timeout(3, TimeUnit.SECONDS).toBlocking().first();
     assertEquals(2, events.size());
-    assertEquals(Topic.MessageWrite, events.get(0).getTopic());
+    assertEquals(Topic.Write, events.get(0).getTopic());
     assertEquals(Topic.WriteSuccess, events.get(1).getTopic());
   }
 
@@ -87,17 +87,18 @@ public class ClientStreamTest {
   }
 
   @Test
-  public void testClientStreamSendAttemptFailed() throws Exception {
+  public void testClientStreamSendFailed() throws Exception {
     BehaviorSubject<Event> sendFailedSubject = BehaviorSubject.create();
     clientStream.listen().filter(Event::isWriteError).subscribe(sendFailedSubject);
 
-    Address address = Address.from("host:1234");
+    Address sendAddress = Address.from("host:1234");
     ServiceMessage message = ServiceMessage.withQualifier("q/hello").build();
-    clientStream.send(address, message);
+    clientStream.send(sendAddress, message);
 
     Event event = sendFailedSubject.timeout(3, TimeUnit.SECONDS).toBlocking().getIterator().next();
-    assertEquals(address, event.getAddress());
+    assertEquals(sendAddress, event.getAddress());
     assertEquals(message, event.getMessageOrThrow());
+    assertTrue(event.getError().isPresent());
   }
 
   @Test
@@ -122,7 +123,7 @@ public class ClientStreamTest {
     // await a bit
     TimeUnit.SECONDS.sleep(3);
 
-    // assert that clientStream received events about closed channels corresp to serverStream channels
+    // assert that clientStream received event about closed channel corresp to serverStream channel
     Event event = channelInactiveSubject.test().getOnNextEvents().get(0);
     assertEquals(Topic.ChannelContextClosed, event.getTopic());
     assertFalse(event.hasError());

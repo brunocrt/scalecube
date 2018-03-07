@@ -56,10 +56,10 @@ public final class ClientStream extends DefaultEventStream {
     CompletableFuture<ChannelContext> promise = clientTransport.getOrConnect(address);
     promise.whenComplete((channelContext, throwable) -> {
       if (channelContext != null) {
-        channelContext.postMessageWrite(message);
+        channelContext.postWrite(message);
       }
       if (throwable != null) {
-        helperChannelContext.postWriteError(throwable, message, address);
+        helperChannelContext.postWriteError(address, message, throwable);
       }
     });
   }

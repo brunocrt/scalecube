@@ -71,12 +71,32 @@ public final class ChannelContext {
     return subject.onBackpressureBuffer().asObservable();
   }
 
+  public Observable<Event> listenReadSuccess() {
+    return listen().filter(Event::isReadSuccess);
+  }
+
+  public Observable<Event> listenReadError() {
+    return listen().filter(Event::isReadError);
+  }
+
+  public Observable<Event> listenWrite() {
+    return listen().filter(Event::isWrite);
+  }
+
+  public Observable<Event> listenWriteSuccess() {
+    return listen().filter(Event::isWriteSuccess);
+  }
+
+  public Observable<Event> listenWriteError() {
+    return listen().filter(Event::isWriteError);
+  }
+
   public Observable<ServiceMessage> listenMessageReadSuccess() {
-    return listen().filter(Event::isReadSuccess).map(Event::getMessageOrThrow);
+    return listenReadSuccess().map(Event::getMessageOrThrow);
   }
 
   public Observable<ServiceMessage> listenMessageWrite() {
-    return listen().filter(Event::isMessageWrite).map(Event::getMessageOrThrow);
+    return listenWrite().map(Event::getMessageOrThrow);
   }
 
   public void postReadSuccess(ServiceMessage message) {
@@ -87,15 +107,15 @@ public final class ChannelContext {
     subject.onNext(new Event.Builder(Topic.ReadError, address, id).error(throwable).build());
   }
 
-  public void postMessageWrite(ServiceMessage message) {
-    subject.onNext(new Event.Builder(Topic.MessageWrite, address, id).message(message).build());
+  public void postWrite(ServiceMessage message) {
+    subject.onNext(new Event.Builder(Topic.Write, address, id).message(message).build());
   }
 
-  public void postWriteError(Throwable throwable, ServiceMessage message) {
-    subject.onNext(new Event.Builder(Topic.WriteError, address, id).error(throwable).message(message).build());
+  public void postWriteError(ServiceMessage message, Throwable throwable) {
+    postWriteError(address, message, throwable);
   }
 
-  public void postWriteError(Throwable throwable, ServiceMessage message, Address address) {
+  public void postWriteError(Address address, ServiceMessage message, Throwable throwable) {
     subject.onNext(new Event.Builder(Topic.WriteError, address, id).error(throwable).message(message).build());
   }
 

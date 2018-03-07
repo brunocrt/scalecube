@@ -38,7 +38,7 @@ public final class NettyServiceMessageHandler extends ChannelInboundHandlerAdapt
 
           ctx.writeAndFlush(buf).addListener((ChannelFutureListener) future -> {
             if (!future.isSuccess()) {
-              channelContext.postWriteError(future.cause(), message);
+              channelContext.postWriteError(message, future.cause());
             } else {
               channelContext.postWriteSuccess(message);
             }
