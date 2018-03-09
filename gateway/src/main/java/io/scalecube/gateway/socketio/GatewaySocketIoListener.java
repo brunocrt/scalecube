@@ -1,6 +1,7 @@
 package io.scalecube.gateway.socketio;
 
 import io.scalecube.ipc.ChannelContext;
+import io.scalecube.ipc.Event;
 import io.scalecube.ipc.EventStream;
 import io.scalecube.ipc.codec.ServiceMessageCodec;
 import io.scalecube.ipc.netty.ChannelSupport;
@@ -57,7 +58,7 @@ public final class GatewaySocketIoListener implements SocketIOListener {
       }
     });
 
-    channelContext.listenMessageWrite().subscribe(
+    channelContext.listenWrite().map(Event::getMessageOrThrow).subscribe(
         message -> {
           ByteBuf buf = ServiceMessageCodec.encode(message);
           ChannelSupport.releaseRefCount(message.getData()); // release ByteBuf

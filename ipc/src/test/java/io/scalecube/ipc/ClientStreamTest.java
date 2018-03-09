@@ -66,7 +66,9 @@ public class ClientStreamTest {
 
   @Test
   public void testClientStreamReceivesFromServerStream() throws Exception {
-    serverStream.listenMessageReadSuccess().subscribe(serverStream::send);
+    serverStream.listenReadSuccess()
+        .map(Event::getMessageOrThrow)
+        .subscribe(serverStream::send);
 
     Subject<Event, Event> responseSubject = ReplaySubject.create();
     clientStream.listen().filter(Event::isReadSuccess).subscribe(responseSubject);

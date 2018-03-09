@@ -4,6 +4,7 @@ import static io.scalecube.ipc.Qualifier.Q_ERROR_NAMESPACE;
 
 import io.scalecube.ipc.ChannelContext;
 import io.scalecube.ipc.ErrorData;
+import io.scalecube.ipc.Event;
 import io.scalecube.ipc.Qualifier;
 import io.scalecube.ipc.ServiceMessage;
 import io.scalecube.ipc.netty.ChannelSupport;
@@ -33,7 +34,7 @@ public final class GatewayHttpMessageHandler extends ChannelDuplexHandler {
       return;
     }
 
-    channelContext.listenMessageWrite().subscribe(
+    channelContext.listenWrite().map(Event::getMessageOrThrow).subscribe(
         message -> {
           Qualifier qualifier = Qualifier.fromString(message.getQualifier());
           FullHttpResponse response;

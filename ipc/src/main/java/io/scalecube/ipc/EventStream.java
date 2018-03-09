@@ -34,14 +34,6 @@ public interface EventStream {
     return listen().filter(Event::isWriteError);
   }
 
-  default Observable<ServiceMessage> listenMessageReadSuccess() {
-    return listenReadSuccess().map(Event::getMessageOrThrow);
-  }
-
-  default Observable<ServiceMessage> listenMessageWriteSuccess() {
-    return listenWriteSuccess().map(Event::getMessageOrThrow);
-  }
-
   default Observable<Event> listenChannelContextClosed() {
     return listen().filter(Event::isChannelContextClosed);
   }

@@ -22,6 +22,8 @@ public final class ChannelContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ChannelContext.class);
 
+  private static final Address HELPER_ADDRESS = Address.from("localhost:0");
+
   private static final ConcurrentMap<String, ChannelContext> idToChannelContext = new ConcurrentHashMap<>();
 
   private final Subject<Event, Event> subject = PublishSubject.<Event>create().toSerialized();
@@ -49,6 +51,29 @@ public final class ChannelContext {
     idToChannelContext.put(id, channelContext);
     LOGGER.debug("Created {}", channelContext);
     return channelContext;
+  }
+
+  /**
+   * Creates or gets {@link ChannelContext} by identity which is known upfront.
+   * 
+   * @param id known channelContext identity.
+   * @return either newly created channelContext or existing one under this id in the map.
+   */
+  public static ChannelContext createOrGet(String id) {
+    idToChannelContext.computeIfAbsent(id, id1 -> {
+      ChannelContext channelContext = new ChannelContext(id1, HELPER_ADDRESS);
+      LOGGER.debug("Created {}", channelContext);
+      return channelContext;
+    });
+    return idToChannelContext.get(id);
+  }
+
+  /**
+   * Creates special purpose {@link ChannelContext} instance with generated id and fixed address. See for details
+   * internals of {@link ClientStream#send(Address, ServiceMessage)} function.
+   */
+  public static ChannelContext createHelper() {
+    return create(HELPER_ADDRESS);
   }
 
   public static ChannelContext getIfExist(String id) {
@@ -91,14 +116,6 @@ public final class ChannelContext {
     return listen().filter(Event::isWriteError);
   }
 
-  public Observable<ServiceMessage> listenMessageReadSuccess() {
-    return listenReadSuccess().map(Event::getMessageOrThrow);
-  }
-
-  public Observable<ServiceMessage> listenMessageWrite() {
-    return listenWrite().map(Event::getMessageOrThrow);
-  }
-
   public void postReadSuccess(ServiceMessage message) {
     subject.onNext(new Event.Builder(Topic.ReadSuccess, address, id).message(message).build());
   }
@@ -136,6 +153,10 @@ public final class ChannelContext {
     }
   }
 
+  /**
+   * Set an action to take on a moment when this channelContext closed. Consumer param will be this channelContext with
+   * completed subject.
+   */
   public void listenClose(Consumer<ChannelContext> onClose) {
     closeSubject.subscribe(event -> {
     }, throwable -> onClose.accept(this), () -> onClose.accept(this));

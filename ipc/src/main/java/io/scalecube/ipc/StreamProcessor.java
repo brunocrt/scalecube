@@ -1,14 +1,15 @@
 package io.scalecube.ipc;
 
 import rx.Observable;
+import rx.Observer;
 
-public interface StreamProcessor {
+public interface StreamProcessor extends Observer<ServiceMessage> {
 
-  void onNext(ServiceMessage message);
+  ServiceMessage onErrorMessage =
+      ServiceMessage.withQualifier(Qualifier.Q_GENERAL_FAILURE).build();
 
-  void onError(Throwable throwable);
-
-  void onCompleted();
+  ServiceMessage onCompletedMessage =
+      ServiceMessage.withQualifier(Qualifier.Q_ON_COMPLETED).build();
 
   Observable<ServiceMessage> listen();
 
